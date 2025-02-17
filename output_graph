@@ -1,0 +1,42 @@
+// L'automate crampté
+digraph automate {
+	0 [label="E->¤E+T
+E->¤T
+T->¤T*F
+T->¤F
+F->¤(E)
+F->¤0
+F->¤9"]
+	1 [label="E->E¤+T"]
+	2 [label="E->T¤
+T->T¤*F"]
+	3 [label="T->F¤"]
+	4 [label="F->(¤E)
+E->¤E+T
+E->¤T
+T->¤T*F
+T->¤F
+F->¤(E)
+F->¤0
+F->¤9"]
+	5 [label="F->0¤"]
+	6 [label="F->9¤"]
+	7 [label="E->E+¤T
+T->¤T*F
+T->¤F
+F->¤(E)
+F->¤0
+F->¤9"]
+	8 [label="T->T*¤F
+F->¤(E)
+F->¤0
+F->¤9"]
+	0 -> 1 [label=E]
+	0 -> 2 [label=T]
+	0 -> 3 [label=F]
+	0 -> 4 [label="("]
+	0 -> 5 [label=0]
+	0 -> 6 [label=9]
+	1 -> 7 [label="+"]
+	2 -> 8 [label="*"]
+}
