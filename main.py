@@ -79,32 +79,44 @@ def build_robot():
     L.append(fermeture(ensemble))  # Fermeture de l'état initial
     i = 0
 
-    while added and i <= len(L):  # Parcourir les états
+    while i < len(L):  # Parcourir les états
+        #print("etat",i)
         added = False
         for s in symbols:
+            #print("    symbole:",s)
             N = []
-            for itm in L[i]:  
+            for itm in L[i]:
                 if itm.rightpoint and itm.rightpoint[0] == s:
                     new_item = item(itm.left, itm.leftpoint + [s], itm.rightpoint[1:])  # Éviter pop()
                     if isnotinensemble(N, new_item):  # Vérifier si l'élément existe déjà
+                        #print("        item : ",new_item.left,"->","".join(new_item.leftpoint),"°","".join(new_item.rightpoint))
                         N.append(new_item)
 
-            if len(N) > 0:
-                N = fermeture(N)  # Appliquer la fermeture après avoir rempli N
+                    if len(N) > 0:
+                        N = fermeture(N)  # Appliquer la fermeture après avoir rempli N
 
-                if N not in L:  # Vérifier si c'est un nouvel état
-                    L.append(N)
-                    state_index = len(L) - 1
-                else:
-                    state_index = L.index(N)
-                added = True
+                        if N not in L and N:  # Vérifier si c'est un nouvel état
+                            L.append(N)
+                            #for j in range(len(N)):
+                                #print("             item : ",N[j].left,"->","".join(N[j].leftpoint),"°","".join(N[j].rightpoint))
+                            state_index = len(L) - 1
+                            added = True
+                        else:
+                            state_index = L.index(N)
 
                 # Ajouter la transition même si l'état existe déjà
-                tmpTransition = {'from': i, 'to': state_index, 'symbol': s}
-                if tmpTransition not in transitions:
-                    transitions.append(tmpTransition)
-
+                    tmpTransition = {'from': i, 'to': state_index, 'symbol': s}
+                    if tmpTransition not in transitions:
+                        #print("         transition",i,"->",state_index,"(",s,")")
+                        transitions.append(tmpTransition)
         i += 1
+        print("L so far")
+        for j in range(len(L)):
+            print("   ensemble",j)
+            for itm in L[j]:
+                print("            item : ",itm.left,"->","".join(itm.leftpoint),"°","".join(itm.rightpoint))
+
+        print(len(L))
         
     return L, transitions  # Retourner les états et transitions
 
