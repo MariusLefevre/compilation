@@ -13,7 +13,7 @@ rules = [
  {'left':'F','right':['0']},
  {'left':'F','right':['9']}
 ]
-symbols = ['E','T','F','+','*','(',')','0','9']
+symbols = ['E','T','F','+','*','(',')','0','9','$']
 word = ['2'+'(','3','+','1',')'] # mot à parser
 
 #fermeture 
@@ -110,16 +110,40 @@ def build_robot():
                         #print("         transition",i,"->",state_index,"(",s,")")
                         transitions.append(tmpTransition)
         i += 1
-        print("L so far")
-        for j in range(len(L)):
-            print("   ensemble",j)
-            for itm in L[j]:
-                print("            item : ",itm.left,"->","".join(itm.leftpoint),"°","".join(itm.rightpoint))
-
-        print(len(L))
         
     return L, transitions  # Retourner les états et transitions
 
+def constrBranch(transitions,nbState):
+    branch=[{} for _ in range(nbState)]
+    for trans in transitions: 
+        if(trans["symbol"] in nterm):
+            branch[trans['from']][trans['symbol']]=trans['to']
+    return branch
+
+def constrActions(stateList,transitions):
+    retour=True
+    nbState=len(stateList)
+    actionsTable=[{} for _ in range(nbState)]
+    for state in stateList:
+        for itm in state:
+            stateIndex=stateList.index(state)
+            if  itm.rightpoint and (itm.rightpoint[0] not in nterm):#si X → α • aβ est dans i avec a terminal
+                for trans in transitions:
+                    if trans["from"]==stateIndex:
+                        if actionsTable[trans['from']].get(trans['symbol']):
+                            retour=False
+                        actionsTable[trans['from']][trans['symbol']]=("D",trans['to'])
+            if not itm.rightpoint and itm.left != axiom:
+                k=rules.index({"left":itm.left,"right":itm.leftpoint})
+                for s in symbols:
+                    if s not in nterm:
+                        actionsTable[stateIndex][s]=("R",k)
+    for i in actionsTable:
+        print(i)
+    
+    return actionsTable , retour
+
+        
 print("hello")
 transitions={"from":"","to":"","symbol":""}
 L,transitions=build_robot()
@@ -132,5 +156,10 @@ for i in range(len(L)):
     dot.node(str(i), statelabel)  # Use the joined string as the label  
 for trans in transitions:
     dot.edge(str(trans["from"]),str(trans["to"]),label=trans["symbol"])
-print(dot.source)
+
 dot.render('output_graph', format='png', view=True)
+
+branch=constrBranch(transitions,len(L))
+
+actionsTable, isLR = constrActions(L,transitions)
+if( not isLR): print ("erreur, conflit")
