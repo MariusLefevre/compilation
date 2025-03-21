@@ -1,5 +1,7 @@
 from item import item
 import graphviz
+import pickle
+
 
 axiom = 'E'
 nterm = ['E','T','F']
@@ -14,7 +16,8 @@ rules = [
  {'left':'F','right':['9']}
 ]
 symbols = ['E','T','F','+','*','(',')','0','9','$']
-word = ['2'+'(','3','+','1',')'] # mot à parser
+ntermS = ['+','*','(',')','0','9','$']
+word = ['0','+','(','9','+','0',')'] # mot à parser
 
 #fermeture 
 
@@ -130,19 +133,60 @@ def constrActions(stateList,transitions):
             if  itm.rightpoint and (itm.rightpoint[0] not in nterm):#si X → α • aβ est dans i avec a terminal
                 for trans in transitions:
                     if trans["from"]==stateIndex:
-                        if actionsTable[trans['from']].get(trans['symbol']):
+                        if actionsTable[trans['from']].get(trans['symbol']) :
                             retour=False
-                        actionsTable[trans['from']][trans['symbol']]=("D",trans['to'])
+                        if trans['symbol'] not in nterm:
+                            actionsTable[trans['from']][trans['symbol']]=("D",trans['to'])
+                            #print('ajout de D',trans['to'],' a ',trans['from'] ,trans['symbol'])
             if not itm.rightpoint and itm.left != axiom:
                 k=rules.index({"left":itm.left,"right":itm.leftpoint})
                 for s in symbols:
                     if s not in nterm:
                         actionsTable[stateIndex][s]=("R",k)
-    for i in actionsTable:
-        print(i)
+            if itm.left==axiom and not itm.rightpoint:
+                actionsTable[stateIndex]['$']="ACC"
+            
+    for i in range(len(actionsTable)):
+        print(i,end="")
+        for j in ntermS:
+            if(actionsTable[i].get(j,0)):
+                print("|",actionsTable[i][j], end="")
+            else:
+                print("|---------",end="")
+        print("")
     
     return actionsTable , retour
 
+def parsing(mot,actionTable,branchTable,L):
+    mot.append("$")
+    pile=[0]
+    
+    while(1):
+        p=pile[0]
+        s=mot[0]
+        A=actionsTable[p].get(s,'crampté')
+        if A=="ACC":
+            acc=True
+        if A=='crampté':
+            acc=False
+            break
+        if A[0]=="D":
+            print("ouais mon gars")
+            mot.pop(0)
+            pile.insert(0,A[1])
+            print(pile)
+        if A[0]=="R":
+            for i in range(0,len(rules[A[1]]["right"])):
+                pile.pop(0)
+            print(rules[A[1]])
+            print(branchTable[p])
+            pile.insert(0,(branchTable[p][rules[A[1]]['left']]))
+
+        print(actionTable[p][s])
+    return acc
+
+
+    
         
 print("hello")
 transitions={"from":"","to":"","symbol":""}
@@ -163,3 +207,6 @@ branch=constrBranch(transitions,len(L))
 
 actionsTable, isLR = constrActions(L,transitions)
 if( not isLR): print ("erreur, conflit")
+
+if parsing(word,actionsTable,branch,L):print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+else:print("NOOOOOOOOOOOOOOOOOOOOOOOOOOO")
