@@ -3,21 +3,24 @@ import graphviz
 import pickle
 
 
-axiom = 'E'
-nterm = ['E','T','F']
+axiom = 'S'
+nterm = ['E','T','F','S']
 empty = '\u03b5' # mot vide
 rules = [
+{'left':'S','right':['E']},
 {'left':'E','right':['E','+','T']},
  {'left':'E','right':['T']},
  {'left':'T','right':['T','*','F']},
  {'left':'T','right':['F']},
  {'left':'F','right':['(','E',')']},
- {'left':'F','right':['0']},
- {'left':'F','right':['9']}
+ {'left':'F','right':['0']}
 ]
-symbols = ['E','T','F','+','*','(',')','0','9','$']
-ntermS = ['+','*','(',')','0','9','$']
-word = ['0','+','(','9','+','0',')'] # mot à parser
+symbols = ['S','E','T','F','+','*','(',')','0','$']
+ntermS = ['0','+','*','(',')','$']
+word = ['0','+','(','0','+','0',')'] # mot à parser
+
+def suivant(X):
+    return X
 
 #fermeture 
 
@@ -68,6 +71,9 @@ def fermeture(ensemble):
 #       i ++
 #
  
+
+
+ #probleme de duplication d'états ex {S->E.} et {S->E. , E->E.+T} en passant par E
 def build_robot():
     added = True
     L = []  # Liste des états
@@ -86,32 +92,40 @@ def build_robot():
         #print("etat",i)
         added = False
         for s in symbols:
-            #print("    symbole:",s)
             N = []
+            #print("pour le symbole",s)
+
+
             for itm in L[i]:
+                #print("----pour l'item")
+                #print("----",itm.left,itm.leftpoint,itm.rightpoint)
+
                 if itm.rightpoint and itm.rightpoint[0] == s:
                     new_item = item(itm.left, itm.leftpoint + [s], itm.rightpoint[1:])  # Éviter pop()
-                    if isnotinensemble(N, new_item):  # Vérifier si l'élément existe déjà
+                    if new_item not in N:  # Vérifier si l'élément existe déjà
                         #print("        item : ",new_item.left,"->","".join(new_item.leftpoint),"°","".join(new_item.rightpoint))
                         N.append(new_item)
+                    
 
-                    if len(N) > 0:
-                        N = fermeture(N)  # Appliquer la fermeture après avoir rempli N
+            if len(N) > 0:
+                N = fermeture(N)  # Appliquer la fermeture après avoir rempli N
 
-                        if N not in L and N:  # Vérifier si c'est un nouvel état
-                            L.append(N)
-                            #for j in range(len(N)):
-                                #print("             item : ",N[j].left,"->","".join(N[j].leftpoint),"°","".join(N[j].rightpoint))
-                            state_index = len(L) - 1
-                            added = True
-                        else:
-                            state_index = L.index(N)
+                if N not in L and N:  # Vérifier si c'est un nouvel état
+                           
+                    #print("--------ajout de ")
+                    #for tst in range(len(N)):print("--------",N[tst].left,N[tst].leftpoint,N[tst].rightpoint)
+                    L.append(N.copy())
+                    
+                    state_index = len(L) - 1
+                    added = True
+                else:
+                    state_index = L.index(N)
 
                 # Ajouter la transition même si l'état existe déjà
-                    tmpTransition = {'from': i, 'to': state_index, 'symbol': s}
-                    if tmpTransition not in transitions:
+                tmpTransition = {'from': i, 'to': state_index, 'symbol': s}
+                if tmpTransition not in transitions:
                         #print("         transition",i,"->",state_index,"(",s,")")
-                        transitions.append(tmpTransition)
+                    transitions.append(tmpTransition)
         i += 1
         
     return L, transitions  # Retourner les états et transitions
@@ -157,32 +171,70 @@ def constrActions(stateList,transitions):
     
     return actionsTable , retour
 
+def constrActionsSLR(stateList,transitions):
+    retour=True
+    nbState=len(stateList)
+    actionsTable=[{} for _ in range(nbState)]
+    for state in stateList:
+        for itm in state:
+            stateIndex=stateList.index(state)
+            if  itm.rightpoint and (itm.rightpoint[0] not in nterm):#si X → α • aβ est dans i avec a terminal
+                for trans in transitions:
+                    if trans["from"]==stateIndex:
+                        if actionsTable[trans['from']].get(trans['symbol']) :
+                            retour=False
+                        if trans['symbol'] not in nterm:
+                            actionsTable[trans['from']][trans['symbol']]=("D",trans['to'])
+                            #print('ajout de D',trans['to'],' a ',trans['from'] ,trans['symbol'])
+            if not itm.rightpoint and itm.left != axiom:
+                k=rules.index({"left":itm.left,"right":itm.leftpoint})
+                for s in symbols:
+                    if s not in nterm:
+                        actionsTable[stateIndex][s]=("R",k)
+            if itm.left==axiom and not itm.rightpoint:
+                actionsTable[stateIndex]['$']="ACC"
+            
+    for i in range(len(actionsTable)):
+        print(i,end="")
+        for j in ntermS:
+            if(actionsTable[i].get(j,0)):
+                print("|",actionsTable[i][j], end="")
+            else:
+                print("|---------",end="")
+        print("")
+    
+    return actionsTable , retour
+
 def parsing(mot,actionTable,branchTable,L):
     mot.append("$")
     pile=[0]
-    
+
     while(1):
         p=pile[0]
         s=mot[0]
-        A=actionsTable[p].get(s,'crampté')
+        A=actionTable[p].get(s,'crampté')
+        print("pile",pile)
+        print("symbole",s)
         if A=="ACC":
             acc=True
+            break
         if A=='crampté':
             acc=False
             break
         if A[0]=="D":
-            print("ouais mon gars")
+            print("decalage:",A[1])
             mot.pop(0)
             pile.insert(0,A[1])
-            print(pile)
         if A[0]=="R":
+            print("reduction:",A[1])
             for i in range(0,len(rules[A[1]]["right"])):
-                pile.pop(0)
-            print(rules[A[1]])
-            print(branchTable[p])
+                del pile[0]
+            p=pile[0]
+            print("tete pile:",pile[0])
+            print("regle:",rules[A[1]])
+            print("ligne no:",p ,branchTable[p])
             pile.insert(0,(branchTable[p][rules[A[1]]['left']]))
 
-        print(actionTable[p][s])
     return acc
 
 
@@ -193,6 +245,9 @@ transitions={"from":"","to":"","symbol":""}
 L,transitions=build_robot()
 dot = graphviz.Digraph('automate', comment="L'automate crampté") 
 for i in range(len(L)):
+    for j in range(len(L[i])):
+        print("             item : ",L[i][j].left,"->","".join(L[i][j].leftpoint),"°","".join(L[i][j].rightpoint))
+    print("")
     state_labelList=[]
     for rule in L[i]:
         state_labelList.append(''.join(map(str, [rule.left,"->","".join(rule.leftpoint),"¤","".join(rule.rightpoint)]))) # Join elements with commas
@@ -208,5 +263,5 @@ branch=constrBranch(transitions,len(L))
 actionsTable, isLR = constrActions(L,transitions)
 if( not isLR): print ("erreur, conflit")
 
-if parsing(word,actionsTable,branch,L):print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-else:print("NOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+if parsing(word,actionsTable,branch,L):print("mot accepte")
+else:print("mot non reconnu")
