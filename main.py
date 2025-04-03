@@ -1,15 +1,15 @@
 from item import item
 from itemCLR import itemCLR
 import graphviz
-import pickle
 
 
 axiom = 'S'
 nterm = ['E','T','F','S']
+#nterm = ['X','S','A']
 empty = '\u03b5' # mot vide
 rules = [
-{'left':'S','right':['E']},
-{'left':'E','right':['E','+','T']},
+ {'left':'S','right':['E']},
+ {'left':'E','right':['E','+','T']},
  {'left':'E','right':['T']},
  {'left':'T','right':['T','*','F']},
  {'left':'T','right':['F']},
@@ -17,7 +17,13 @@ rules = [
  {'left':'F','right':['0']}
 ]
 
-""",
+"""
+    {"left":'X','right':['S']},
+    {"left":'S','right':['A','A']},
+    {"left":'A','right':['a','A']},
+    {"left":'A','right':['b']}
+
+
  {'left':'F','right':['1']},
  {'left':'F','right':['2']},
  {'left':'F','right':['3']},
@@ -31,12 +37,17 @@ rules = [
 #symbols = ['S','E','T','F','+','*','(',')','0','1','2','3','4','5','6','7','8','9','$']
 
 symbols = ['S','E','T','F','+','*','(',')','0','$']
+#symbols = ['X','S','A','a','b','$']
 
 #ntermS = ['0','1','2','3','4','5','6','7','8','9','+','*','(',')','$']
 ntermS = ['0','+','*','(',')','$']
-word = ['0','+','(','0','+','0',')'] # mot à parser
+#ntermS = ['a','b','$']
+word = ['0','+','(','0','*','0',')'] # mot à parser
 follow = {}
 first_symb = {}
+
+
+
 
 def firstSymb():
     for a in ntermS :
@@ -114,8 +125,6 @@ def Follow():
     for s,fs in follow.items() :
         print('SUIVANT('+s+') = '+str(fs))
 
-#fermeture 
-
 def isnotinensemble(ensemble,itm):
     for thing in ensemble:
         
@@ -146,6 +155,18 @@ def fermeture(ensemble):
             ensemble.extend(new_items)  # Ajouter les nouveaux éléments en une seule fois
     return ensemble
 
+def premier_sequence(seq):
+
+    result = set()
+    if not seq:
+        return result
+    s0 = seq[0]
+    result.update(first_symb[s0])
+    if empty in result:
+        result.remove(empty)
+    return result
+
+
 def fermetureCLR(ensemble):
     added = True  
     while added:  
@@ -155,18 +176,27 @@ def fermetureCLR(ensemble):
             if thing.rightpoint and thing.rightpoint[0] in nterm:  
                 Y = thing.rightpoint[0]
                 for rule in rules:
+                    beta = thing.rightpoint[1:] if len(thing.rightpoint) > 1 else []
+                    
+                    # Vérification et conversion de lookahead
+                    if isinstance(thing.lookahead, set):
+                        lookahead_list = list(thing.lookahead)
+                    else:
+                        lookahead_list = [thing.lookahead]
+
+                    new_lookahead = premier_sequence(beta + lookahead_list)
+
                     if rule["left"] == Y:
-                        for a in first(rule['right'][1:] + [thing.lookahead]):
-                            print(a)
-                            new_item = itemCLR(rule["left"], [], rule["right"],a)
-                            if new_item not in ensemble and new_item not in new_items:
-                                new_items.append(new_item)
-                                added = True  
+                        print(beta + lookahead_list, new_lookahead)
+                        new_item = itemCLR(rule["left"], [], rule["right"], new_lookahead)
+                        if new_item not in ensemble and new_item not in new_items:
+                            new_items.append(new_item)
+                            added = True  
+
         if new_items:  
             ensemble.extend(new_items)
+    
     return ensemble
-
-
 #L = [ fermeture({ S → • E }) ] // ensemble des états
 #i = 0
 #tant qu’on peut ajouter un état
@@ -310,7 +340,7 @@ def build_robotCLR():
     for i in range(len(L)):
         state_labelList=[]
         for rule in L[i]:
-            state_labelList.append(''.join(map(str, [rule.left,"->","".join(rule.leftpoint),"¤","".join(rule.rightpoint)," | ","".join(rule.lookahead)]))) # Join elements with commas
+            state_labelList.append(''.join(map(str, [rule.left,"->","".join(rule.leftpoint),"¤","".join(rule.rightpoint)," , ","".join(rule.lookahead)]))) # Join elements with commas
             statelabel= "\n".join(map(str,state_labelList))
         dot.node(str(i), statelabel)  # Use the joined string as the label  
     for trans in transitions:
@@ -326,6 +356,7 @@ def constrBranch(transitions,nbState):
     for trans in transitions: 
         if(trans["symbol"] in nterm):
             branch[trans['from']][trans['symbol']]=trans['to']
+            print("case",trans['from'],trans['symbol'],"=",trans['to'])
     return branch
 
 def constrActions(stateList,transitions):
@@ -470,22 +501,20 @@ def parsing(mot,actionTable,branchTable,L):
             pile.insert(0,(branchTable[p][rules[A[1]]['left']]))
 
     return acc
-
-
-    
+  
 firstSymb()
 Follow()
 print("hello")
 transitions={"from":"","to":"","symbol":""}
 
-L,transitions=build_robotCLR()
+L,transitions=build_robot()
 branch=constrBranch(transitions,len(L))
-actionsTable, ActionTableCorrect = constrActionsCLR(L,transitions)
+actionsTable, ActionTableCorrect = constrActions(L,transitions)
 
 if( not ActionTableCorrect): 
     print ("erreur, conflit")
     print("la grammaire n'est pas valide")
-    exit()
+    #exit()
 
 if parsing(word,actionsTable,branch,L):print("mot accepte")
 else:print("mot non reconnu")
