@@ -13,14 +13,97 @@ rules = [
  {'left':'T','right':['T','*','F']},
  {'left':'T','right':['F']},
  {'left':'F','right':['(','E',')']},
- {'left':'F','right':['0']}
+ {'left':'F','right':['0']},
+ {'left':'F','right':['1']},
+ {'left':'F','right':['2']},
+ {'left':'F','right':['3']},
+ {'left':'F','right':['4']},
+ {'left':'F','right':['5']},
+ {'left':'F','right':['6']},
+ {'left':'F','right':['7']},
+ {'left':'F','right':['8']},
+ {'left':'F','right':['9']}
 ]
-symbols = ['S','E','T','F','+','*','(',')','0','$']
-ntermS = ['0','+','*','(',')','$']
-word = ['0','+','(','0','+','0',')'] # mot à parser
+symbols = ['S','E','T','F','+','*','(',')','0','1','2','3','4','5','6','7','8','9','$']
+ntermS = ['0','1','2','3','4','5','6','7','8','9','+','*','(',')','$']
+word = ['5','+','(','2','+','8',')'] # mot à parser
+follow = {}
+first_symb = {}
 
-def suivant(X):
-    return X
+def firstSymb():
+    for a in ntermS :
+        first_symb[a] = [a]
+    for n in nterm :
+        first_symb[n] = []
+    first_symb[axiom] = []
+    fin = False
+    while not fin :
+        fin = True
+        for r in rules :
+            if r['right'][0]==empty and empty not in first_symb[r['left']] :
+                first_symb[r['left']].append(empty)
+                fin = False
+            else :
+                for p in first_symb[r['right'][0]] :
+                    if p not in first_symb[r['left']] :
+                        first_symb[r['left']].append(p)
+                        fin = False
+                i = 0
+                while i<len(r['right'])-1 and empty in first_symb[r['right'][i]] :
+                    for p in first_symb[r['right'][i+1]] :
+                        if p not in first_symb[r['left']] :
+                            first_symb[r['left']].append(p)
+                            fin = False
+                    i += 1
+                if i==len(r['right'])-1 :
+                    if empty in first_symb[r['right'][i]] :
+                        if empty not in first_symb[r['left']] :
+                            first_symb[r['left']].append(empty)
+                            fin = False
+    for s,fs in first_symb.items() :
+        print('DEBUT('+s+') = '+str(fs))
+
+
+def first(exp) :
+    f = [p for p in first_symb[exp[0]] if p!=empty]
+    i = 0
+    while i<len(exp)-1 and empty in first_symb[exp[i]] :
+        f += [p for p in first_symb[exp[i+1]] if p!=empty]
+        i += 1
+    if i==len(exp)-1 :
+        if empty in first_symb[exp[i]] and empty not in f :
+            f.append(empty)
+    return f
+
+def Follow():
+    firstSymb()
+    for n in nterm :
+        follow[n] = []
+    follow[axiom] = ['$']
+    fin = False
+    while not fin :
+        fin = True
+        for r in rules :
+            for i in range(len(r['right'])) :
+                if r['right'][i] in nterm :
+                    if i<len(r['right'])-1 :
+                        add = [e for e in first(r['right'][i+1:]) if e!=empty and e not in follow[r['right'][i]]]
+                        follow[r['right'][i]] += add
+                        if len(add)!=0 :
+                            fin = False
+                        if empty in first(r['right'][i+1:]) :
+                            add = [e for e in follow[r['left']] if e not in follow[r['right'][i]]]
+                            follow[r['right'][i]] += add
+                            if len(add)!=0 :
+                                fin = False
+                    else :
+                        add = [e for e in follow[r['left']] if e not in follow[r['right'][i]]]
+                        follow[r['right'][i]] += add
+                        if len(add)!=0 :
+                            fin = False
+
+    for s,fs in follow.items() :
+        print('SUIVANT('+s+') = '+str(fs))
 
 #fermeture 
 
@@ -148,6 +231,8 @@ def constrActions(stateList,transitions):
                 for trans in transitions:
                     if trans["from"]==stateIndex:
                         if actionsTable[trans['from']].get(trans['symbol']) :
+                            print("")
+                            print("concurrence dans la case ",trans["from"],trans["symbol"],"entre",actionsTable[trans['from']].get(trans['symbol']),"et",("D",trans['to']))
                             retour=False
                         if trans['symbol'] not in nterm:
                             actionsTable[trans['from']][trans['symbol']]=("D",trans['to'])
@@ -182,13 +267,16 @@ def constrActionsSLR(stateList,transitions):
                 for trans in transitions:
                     if trans["from"]==stateIndex:
                         if actionsTable[trans['from']].get(trans['symbol']) :
-                            retour=False
+                            if( actionsTable[trans['from']].get(trans['symbol'])!=("D",trans['to'])):
+                                retour=False
+                                print("")
+                                print("concurrence dans la case ",trans["from"],trans["symbol"],"entre",actionsTable[trans['from']].get(trans['symbol']),"et",("D",trans['to']))
                         if trans['symbol'] not in nterm:
                             actionsTable[trans['from']][trans['symbol']]=("D",trans['to'])
                             #print('ajout de D',trans['to'],' a ',trans['from'] ,trans['symbol'])
             if not itm.rightpoint and itm.left != axiom:
                 k=rules.index({"left":itm.left,"right":itm.leftpoint})
-                for s in symbols:
+                for s in follow[itm.left]:
                     if s not in nterm:
                         actionsTable[stateIndex][s]=("R",k)
             if itm.left==axiom and not itm.rightpoint:
@@ -239,15 +327,13 @@ def parsing(mot,actionTable,branchTable,L):
 
 
     
-        
+
+Follow()
 print("hello")
 transitions={"from":"","to":"","symbol":""}
 L,transitions=build_robot()
 dot = graphviz.Digraph('automate', comment="L'automate crampté") 
 for i in range(len(L)):
-    for j in range(len(L[i])):
-        print("             item : ",L[i][j].left,"->","".join(L[i][j].leftpoint),"°","".join(L[i][j].rightpoint))
-    print("")
     state_labelList=[]
     for rule in L[i]:
         state_labelList.append(''.join(map(str, [rule.left,"->","".join(rule.leftpoint),"¤","".join(rule.rightpoint)]))) # Join elements with commas
@@ -260,7 +346,7 @@ dot.render('output_graph', format='png', view=True)
 
 branch=constrBranch(transitions,len(L))
 
-actionsTable, isLR = constrActions(L,transitions)
+actionsTable, isLR = constrActionsSLR(L,transitions)
 if( not isLR): print ("erreur, conflit")
 
 if parsing(word,actionsTable,branch,L):print("mot accepte")
