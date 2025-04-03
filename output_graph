@@ -1,140 +1,104 @@
 // L'automate crampté
 digraph automate {
-	0 [label="S->¤E
-E->¤E+T
-E->¤T
-T->¤T*F
-T->¤F
-F->¤(E)
-F->¤0
-F->¤1
-F->¤2
-F->¤3
-F->¤4
-F->¤5
-F->¤6
-F->¤7
-F->¤8
-F->¤9"]
-	1 [label="S->E¤
-E->E¤+T"]
-	2 [label="E->T¤
-T->T¤*F"]
-	3 [label="T->F¤"]
-	4 [label="F->(¤E)
-E->¤E+T
-E->¤T
-T->¤T*F
-T->¤F
-F->¤(E)
-F->¤0
-F->¤1
-F->¤2
-F->¤3
-F->¤4
-F->¤5
-F->¤6
-F->¤7
-F->¤8
-F->¤9"]
-	5 [label="F->0¤"]
-	6 [label="F->1¤"]
-	7 [label="F->2¤"]
-	8 [label="F->3¤"]
-	9 [label="F->4¤"]
-	10 [label="F->5¤"]
-	11 [label="F->6¤"]
-	12 [label="F->7¤"]
-	13 [label="F->8¤"]
-	14 [label="F->9¤"]
-	15 [label="E->E+¤T
-T->¤T*F
-T->¤F
-F->¤(E)
-F->¤0
-F->¤1
-F->¤2
-F->¤3
-F->¤4
-F->¤5
-F->¤6
-F->¤7
-F->¤8
-F->¤9"]
-	16 [label="T->T*¤F
-F->¤(E)
-F->¤0
-F->¤1
-F->¤2
-F->¤3
-F->¤4
-F->¤5
-F->¤6
-F->¤7
-F->¤8
-F->¤9"]
-	17 [label="F->(E¤)
-E->E¤+T"]
-	18 [label="E->E+T¤
-T->T¤*F"]
-	19 [label="T->T*F¤"]
-	20 [label="F->(E)¤"]
+	0 [label="S->¤E | $
+E->¤E+T | +
+E->¤T | $
+E->¤T | +
+T->¤T*F | *
+T->¤F | $
+T->¤F | +
+T->¤F | *
+F->¤(E) | (
+F->¤(E) | 0
+F->¤0 | $
+F->¤0 | +
+F->¤0 | *"]
+	1 [label="S->E¤ | $
+E->E¤+T | +"]
+	2 [label="E->T¤ | $
+E->T¤ | +
+T->T¤*F | *"]
+	3 [label="T->F¤ | $
+T->F¤ | +
+T->F¤ | *"]
+	4 [label="F->(¤E) | (
+F->(¤E) | 0
+E->¤E+T | +
+E->¤T | (
+E->¤T | 0
+E->¤T | +
+T->¤T*F | *
+T->¤F | (
+T->¤F | 0
+T->¤F | +
+T->¤F | *
+F->¤(E) | (
+F->¤(E) | 0
+F->¤0 | (
+F->¤0 | 0
+F->¤0 | +
+F->¤0 | *"]
+	5 [label="F->0¤ | $
+F->0¤ | +
+F->0¤ | *"]
+	6 [label="E->E+¤T | +
+T->¤T*F | *
+T->¤F | +
+T->¤F | *
+F->¤(E) | (
+F->¤(E) | 0
+F->¤0 | +
+F->¤0 | *"]
+	7 [label="T->T*¤F | *
+F->¤(E) | (
+F->¤(E) | 0
+F->¤0 | *"]
+	8 [label="F->(E¤) | (
+F->(E¤) | 0
+E->E¤+T | +"]
+	9 [label="E->T¤ | (
+E->T¤ | 0
+E->T¤ | +
+T->T¤*F | *"]
+	10 [label="T->F¤ | (
+T->F¤ | 0
+T->F¤ | +
+T->F¤ | *"]
+	11 [label="F->0¤ | (
+F->0¤ | 0
+F->0¤ | +
+F->0¤ | *"]
+	12 [label="E->E+T¤ | +
+T->T¤*F | *"]
+	13 [label="T->F¤ | +
+T->F¤ | *"]
+	14 [label="F->0¤ | +
+F->0¤ | *"]
+	15 [label="T->T*F¤ | *"]
+	16 [label="F->0¤ | *"]
+	17 [label="F->(E)¤ | (
+F->(E)¤ | 0"]
 	0 -> 1 [label=E]
 	0 -> 2 [label=T]
 	0 -> 3 [label=F]
 	0 -> 4 [label="("]
 	0 -> 5 [label=0]
-	0 -> 6 [label=1]
-	0 -> 7 [label=2]
-	0 -> 8 [label=3]
-	0 -> 9 [label=4]
-	0 -> 10 [label=5]
-	0 -> 11 [label=6]
-	0 -> 12 [label=7]
-	0 -> 13 [label=8]
-	0 -> 14 [label=9]
-	1 -> 15 [label="+"]
-	2 -> 16 [label="*"]
-	4 -> 17 [label=E]
-	4 -> 2 [label=T]
-	4 -> 3 [label=F]
+	1 -> 6 [label="+"]
+	2 -> 7 [label="*"]
+	4 -> 8 [label=E]
+	4 -> 9 [label=T]
+	4 -> 10 [label=F]
 	4 -> 4 [label="("]
-	4 -> 5 [label=0]
-	4 -> 6 [label=1]
-	4 -> 7 [label=2]
-	4 -> 8 [label=3]
-	4 -> 9 [label=4]
-	4 -> 10 [label=5]
-	4 -> 11 [label=6]
-	4 -> 12 [label=7]
-	4 -> 13 [label=8]
-	4 -> 14 [label=9]
-	15 -> 18 [label=T]
-	15 -> 3 [label=F]
-	15 -> 4 [label="("]
-	15 -> 5 [label=0]
-	15 -> 6 [label=1]
-	15 -> 7 [label=2]
-	15 -> 8 [label=3]
-	15 -> 9 [label=4]
-	15 -> 10 [label=5]
-	15 -> 11 [label=6]
-	15 -> 12 [label=7]
-	15 -> 13 [label=8]
-	15 -> 14 [label=9]
-	16 -> 19 [label=F]
-	16 -> 4 [label="("]
-	16 -> 5 [label=0]
-	16 -> 6 [label=1]
-	16 -> 7 [label=2]
-	16 -> 8 [label=3]
-	16 -> 9 [label=4]
-	16 -> 10 [label=5]
-	16 -> 11 [label=6]
-	16 -> 12 [label=7]
-	16 -> 13 [label=8]
-	16 -> 14 [label=9]
-	17 -> 15 [label="+"]
-	17 -> 20 [label=")"]
-	18 -> 16 [label="*"]
+	4 -> 11 [label=0]
+	6 -> 12 [label=T]
+	6 -> 13 [label=F]
+	6 -> 4 [label="("]
+	6 -> 14 [label=0]
+	7 -> 15 [label=F]
+	7 -> 4 [label="("]
+	7 -> 16 [label=0]
+	8 -> 6 [label="+"]
+	8 -> 17 [label=")"]
+	9 -> 7 [label="*"]
+	12 -> 7 [label="*"]
 }

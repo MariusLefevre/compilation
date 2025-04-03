@@ -1,4 +1,5 @@
 from item import item
+from itemCLR import itemCLR
 import graphviz
 import pickle
 
@@ -13,7 +14,10 @@ rules = [
  {'left':'T','right':['T','*','F']},
  {'left':'T','right':['F']},
  {'left':'F','right':['(','E',')']},
- {'left':'F','right':['0']},
+ {'left':'F','right':['0']}
+]
+
+""",
  {'left':'F','right':['1']},
  {'left':'F','right':['2']},
  {'left':'F','right':['3']},
@@ -23,10 +27,14 @@ rules = [
  {'left':'F','right':['7']},
  {'left':'F','right':['8']},
  {'left':'F','right':['9']}
-]
-symbols = ['S','E','T','F','+','*','(',')','0','1','2','3','4','5','6','7','8','9','$']
-ntermS = ['0','1','2','3','4','5','6','7','8','9','+','*','(',')','$']
-word = ['5','+','(','2','+','8',')'] # mot à parser
+"""
+#symbols = ['S','E','T','F','+','*','(',')','0','1','2','3','4','5','6','7','8','9','$']
+
+symbols = ['S','E','T','F','+','*','(',')','0','$']
+
+#ntermS = ['0','1','2','3','4','5','6','7','8','9','+','*','(',')','$']
+ntermS = ['0','+','*','(',')','$']
+word = ['0','+','(','0','+','0',')'] # mot à parser
 follow = {}
 first_symb = {}
 
@@ -73,6 +81,7 @@ def first(exp) :
     if i==len(exp)-1 :
         if empty in first_symb[exp[i]] and empty not in f :
             f.append(empty)
+    print("first de ",exp ,"= ",f)
     return f
 
 def Follow():
@@ -136,7 +145,26 @@ def fermeture(ensemble):
         if new_items:  
             ensemble.extend(new_items)  # Ajouter les nouveaux éléments en une seule fois
     return ensemble
-#
+
+def fermetureCLR(ensemble):
+    added = True  
+    while added:  
+        added = False
+        new_items = []
+        for thing in ensemble:
+            if thing.rightpoint and thing.rightpoint[0] in nterm:  
+                Y = thing.rightpoint[0]
+                for rule in rules:
+                    if rule["left"] == Y:
+                        for a in first(rule['right'][1:] + [thing.lookahead]):
+                            print(a)
+                            new_item = itemCLR(rule["left"], [], rule["right"],a)
+                            if new_item not in ensemble and new_item not in new_items:
+                                new_items.append(new_item)
+                                added = True  
+        if new_items:  
+            ensemble.extend(new_items)
+    return ensemble
 
 
 #L = [ fermeture({ S → • E }) ] // ensemble des états
@@ -210,8 +238,88 @@ def build_robot():
                         #print("         transition",i,"->",state_index,"(",s,")")
                     transitions.append(tmpTransition)
         i += 1
+    dot = graphviz.Digraph('automate', comment="L'automate crampté") 
+    for i in range(len(L)):
+        state_labelList=[]
+        for rule in L[i]:
+            state_labelList.append(''.join(map(str, [rule.left,"->","".join(rule.leftpoint),"¤","".join(rule.rightpoint)]))) # Join elements with commas
+            statelabel= "\n".join(map(str,state_labelList))
+        dot.node(str(i), statelabel)  # Use the joined string as the label  
+    for trans in transitions:
+        dot.edge(str(trans["from"]),str(trans["to"]),label=trans["symbol"])
+
+    dot.render('output_graph', format='png', view=True)
         
     return L, transitions  # Retourner les états et transitions
+
+def build_robotCLR():
+    added = True
+    L = []  # Liste des états
+    ensemble = []
+    transitions = []
+
+    # Ajouter les règles initiales pour l'axiome
+    for rule in rules:
+        if rule["left"] == axiom:
+            ensemble.append(itemCLR(axiom, [], rule["right"],"$"))
+
+    L.append(fermetureCLR(ensemble))  # Fermeture de l'état initial
+    i = 0
+
+    while i < len(L):  # Parcourir les états
+        #print("etat",i)
+        added = False
+        for s in symbols:
+            N = []
+            #print("pour le symbole",s)
+
+
+            for itm in L[i]:
+                #print("----pour l'item")
+                #print("----",itm.left,itm.leftpoint,itm.rightpoint)
+
+                if itm.rightpoint and itm.rightpoint[0] == s:
+                    new_item = itemCLR(itm.left, itm.leftpoint + [s], itm.rightpoint[1:],itm.lookahead)  # Éviter pop()
+                    if new_item not in N:  # Vérifier si l'élément existe déjà
+                        #print("        item : ",new_item.left,"->","".join(new_item.leftpoint),"°","".join(new_item.rightpoint))
+                        N.append(new_item)
+                    
+
+            if len(N) > 0:
+                N = fermetureCLR(N)  # Appliquer la fermeture après avoir rempli N
+
+                if N not in L and N:  # Vérifier si c'est un nouvel état
+                           
+                    #print("--------ajout de ")
+                    #for tst in range(len(N)):print("--------",N[tst].left,N[tst].leftpoint,N[tst].rightpoint)
+                    L.append(N.copy())
+                    
+                    state_index = len(L) - 1
+                    added = True
+                else:
+                    state_index = L.index(N)
+
+                # Ajouter la transition même si l'état existe déjà
+                tmpTransition = {'from': i, 'to': state_index, 'symbol': s}
+                if tmpTransition not in transitions:
+                        #print("         transition",i,"->",state_index,"(",s,")")
+                    transitions.append(tmpTransition)
+        i += 1
+        
+    dot = graphviz.Digraph('automate', comment="L'automate crampté") 
+    for i in range(len(L)):
+        state_labelList=[]
+        for rule in L[i]:
+            state_labelList.append(''.join(map(str, [rule.left,"->","".join(rule.leftpoint),"¤","".join(rule.rightpoint)," | ","".join(rule.lookahead)]))) # Join elements with commas
+            statelabel= "\n".join(map(str,state_labelList))
+        dot.node(str(i), statelabel)  # Use the joined string as the label  
+    for trans in transitions:
+        dot.edge(str(trans["from"]),str(trans["to"]),label=trans["symbol"])
+
+    dot.render('output_graph', format='png', view=True)
+        
+    return L, transitions  # Retourner les états et transitions
+
 
 def constrBranch(transitions,nbState):
     branch=[{} for _ in range(nbState)]
@@ -231,9 +339,10 @@ def constrActions(stateList,transitions):
                 for trans in transitions:
                     if trans["from"]==stateIndex:
                         if actionsTable[trans['from']].get(trans['symbol']) :
-                            print("")
-                            print("concurrence dans la case ",trans["from"],trans["symbol"],"entre",actionsTable[trans['from']].get(trans['symbol']),"et",("D",trans['to']))
-                            retour=False
+                            if( actionsTable[trans['from']].get(trans['symbol'])!=("D",trans['to'])):
+                                print("")
+                                print("concurrence dans la case ",trans["from"],trans["symbol"],"entre",actionsTable[trans['from']].get(trans['symbol']),"et",("D",trans['to']))
+                                retour=False
                         if trans['symbol'] not in nterm:
                             actionsTable[trans['from']][trans['symbol']]=("D",trans['to'])
                             #print('ajout de D',trans['to'],' a ',trans['from'] ,trans['symbol'])
@@ -243,6 +352,43 @@ def constrActions(stateList,transitions):
                     if s not in nterm:
                         actionsTable[stateIndex][s]=("R",k)
             if itm.left==axiom and not itm.rightpoint:
+                actionsTable[stateIndex]['$']="ACC"
+            
+    for i in range(len(actionsTable)):
+        print(i,end="")
+        for j in ntermS:
+            if(actionsTable[i].get(j,0)):
+                print("|",actionsTable[i][j], end="")
+            else:
+                print("|---------",end="")
+        print("")
+    
+    return actionsTable , retour
+
+def constrActionsCLR(stateList,transitions):
+    retour=True
+    nbState=len(stateList)
+    actionsTable=[{} for _ in range(nbState)]
+    for state in stateList:
+        for itm in state:
+            stateIndex=stateList.index(state)
+            if  itm.rightpoint and (itm.rightpoint[0] not in nterm):#si X → α • aβ est dans i avec a terminal
+                for trans in transitions:
+                    if trans["from"]==stateIndex:
+                        if actionsTable[trans['from']].get(trans['symbol']) :
+                            if( actionsTable[trans['from']].get(trans['symbol'])!=("D",trans['to'])):
+                                print("")
+                                print("concurrence dans la case ",trans["from"],trans["symbol"],"entre",actionsTable[trans['from']].get(trans['symbol']),"et",("D",trans['to']))
+                                retour=False
+                        if trans['symbol'] not in nterm:
+                            actionsTable[trans['from']][trans['symbol']]=("D",trans['to'])
+                            #print('ajout de D',trans['to'],' a ',trans['from'] ,trans['symbol'])
+            if not itm.rightpoint and itm.left != axiom:
+                k=rules.index({"left":itm.left,"right":itm.leftpoint})
+                for s in itm.lookahead:
+                    if s not in nterm:
+                        actionsTable[stateIndex][s]=("R",k)
+            if itm.left==axiom and not itm.rightpoint and itm.lookahead=="$":
                 actionsTable[stateIndex]['$']="ACC"
             
     for i in range(len(actionsTable)):
@@ -327,27 +473,19 @@ def parsing(mot,actionTable,branchTable,L):
 
 
     
-
+firstSymb()
 Follow()
 print("hello")
 transitions={"from":"","to":"","symbol":""}
-L,transitions=build_robot()
-dot = graphviz.Digraph('automate', comment="L'automate crampté") 
-for i in range(len(L)):
-    state_labelList=[]
-    for rule in L[i]:
-        state_labelList.append(''.join(map(str, [rule.left,"->","".join(rule.leftpoint),"¤","".join(rule.rightpoint)]))) # Join elements with commas
-    statelabel= "\n".join(map(str,state_labelList))
-    dot.node(str(i), statelabel)  # Use the joined string as the label  
-for trans in transitions:
-    dot.edge(str(trans["from"]),str(trans["to"]),label=trans["symbol"])
 
-dot.render('output_graph', format='png', view=True)
-
+L,transitions=build_robotCLR()
 branch=constrBranch(transitions,len(L))
+actionsTable, ActionTableCorrect = constrActionsCLR(L,transitions)
 
-actionsTable, isLR = constrActionsSLR(L,transitions)
-if( not isLR): print ("erreur, conflit")
+if( not ActionTableCorrect): 
+    print ("erreur, conflit")
+    print("la grammaire n'est pas valide")
+    exit()
 
 if parsing(word,actionsTable,branch,L):print("mot accepte")
 else:print("mot non reconnu")
